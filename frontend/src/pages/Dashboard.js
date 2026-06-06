@@ -4,16 +4,18 @@ import {
   Container, Typography, Grid, Card, CardContent,
   TextField, Button, Box, Tab, Tabs, IconButton,
   Chip, Snackbar, Alert, Divider, alpha, useTheme,
-  InputAdornment, CircularProgress,
+  InputAdornment, CircularProgress, Select, MenuItem,
+  FormControl, InputLabel,
 } from "@mui/material";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
+import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import ScaleIcon from "@mui/icons-material/Scale";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 
-// ── Shared field style ──────────────────────────────────────────────────────
+const CATEGORIES = ["Chest","Back","Legs","Shoulders","Arms","Core","Cardio","Full Body"];
+
 const fieldSx = {
   "& .MuiOutlinedInput-root": {
     borderRadius: "10px",
@@ -23,44 +25,34 @@ const fieldSx = {
   "& label.Mui-focused": { color: "#7c6af7" },
 };
 
-// ── Submit button ───────────────────────────────────────────────────────────
 function SubmitBtn({ label, loading }) {
   return (
-    <Button
-      type="submit"
-      variant="contained"
-      fullWidth
-      disabled={loading}
-      sx={{
-        mt: 2, py: 1.3, borderRadius: "10px", fontWeight: 700,
-        textTransform: "none", fontSize: "0.9rem",
-        background: "linear-gradient(135deg, #7c6af7 0%, #f7567c 100%)",
-        boxShadow: "0 4px 20px rgba(124,106,247,0.35)",
-        "&:hover": { background: "linear-gradient(135deg, #6a58e0, #e0455e)" },
-        "&:disabled": { opacity: 0.6 },
-      }}
-    >
+    <Button type="submit" variant="contained" fullWidth disabled={loading} sx={{
+      mt: 2, py: 1.3, borderRadius: "10px", fontWeight: 700,
+      textTransform: "none", fontSize: "0.9rem",
+      background: "linear-gradient(135deg, #7c6af7 0%, #f7567c 100%)",
+      boxShadow: "0 4px 20px rgba(124,106,247,0.35)",
+      "&:hover": { background: "linear-gradient(135deg, #6a58e0, #e0455e)" },
+      "&:disabled": { opacity: 0.6 },
+    }}>
       {loading ? <CircularProgress size={20} sx={{ color: "#fff" }} /> : label}
     </Button>
   );
 }
 
-// ── Section wrapper card ────────────────────────────────────────────────────
 function SectionCard({ children }) {
   const theme = useTheme();
   return (
     <Card elevation={0} sx={{
       borderRadius: "18px", height: "100%",
       border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
-      background: theme.palette.mode === "dark"
-        ? alpha("#1a1a2e", 0.75) : alpha("#fff", 0.9),
+      background: theme.palette.mode === "dark" ? alpha("#1a1a2e", 0.75) : alpha("#fff", 0.9),
     }}>
       {children}
     </Card>
   );
 }
 
-// ── Section title ───────────────────────────────────────────────────────────
 function SectionTitle({ icon, title, count }) {
   const theme = useTheme();
   return (
@@ -70,12 +62,8 @@ function SectionTitle({ icon, title, count }) {
         alignItems: "center", justifyContent: "center",
         background: "linear-gradient(135deg, #7c6af7, #f7567c)",
         boxShadow: "0 4px 12px rgba(124,106,247,0.3)",
-      }}>
-        {icon}
-      </Box>
-      <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "0.95rem", flexGrow: 1 }}>
-        {title}
-      </Typography>
+      }}>{icon}</Box>
+      <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "0.95rem", flexGrow: 1 }}>{title}</Typography>
       {count !== undefined && (
         <Chip label={count} size="small" sx={{
           bgcolor: alpha(theme.palette.primary.main, 0.12),
@@ -86,7 +74,6 @@ function SectionTitle({ icon, title, count }) {
   );
 }
 
-// ── Empty state ─────────────────────────────────────────────────────────────
 function EmptyState({ icon, text }) {
   const theme = useTheme();
   return (
@@ -97,7 +84,6 @@ function EmptyState({ icon, text }) {
   );
 }
 
-// ── Main Dashboard ──────────────────────────────────────────────────────────
 function Dashboard() {
   const theme = useTheme();
   const [tab, setTab] = useState(0);
@@ -105,7 +91,7 @@ function Dashboard() {
   const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
 
   const [workouts, setWorkouts] = useState([]);
-  const [formData, setFormData] = useState({ exerciseName: "", sets: "", reps: "", weight: "", notes: "" });
+  const [formData, setFormData] = useState({ exerciseName: "", sets: "", reps: "", weight: "", category: "", notes: "" });
 
   const [nutrition, setNutrition] = useState([]);
   const [nutritionData, setNutritionData] = useState({ mealType: "", foodName: "", calories: "" });
@@ -113,8 +99,7 @@ function Dashboard() {
   const [progress, setProgress] = useState([]);
   const [progressData, setProgressData] = useState({ weight: "", bodyFat: "" });
 
-  const showSnack = (message, severity = "success") =>
-    setSnack({ open: true, message, severity });
+  const showSnack = (message, severity = "success") => setSnack({ open: true, message, severity });
 
   useEffect(() => {
     if (!localStorage.getItem("token")) window.location.href = "/";
@@ -127,8 +112,12 @@ function Dashboard() {
 
   const addWorkout = async (e) => {
     e.preventDefault(); setLoading(true);
-    try { await API.post("/workouts", formData); fetchWorkouts(); setFormData({ exerciseName: "", sets: "", reps: "", weight: "", notes: "" }); showSnack("Workout added! 💪"); }
-    catch { showSnack("Failed to add workout", "error"); }
+    try {
+      await API.post("/workouts", formData);
+      fetchWorkouts();
+      setFormData({ exerciseName: "", sets: "", reps: "", weight: "", category: "", notes: "" });
+      showSnack("Workout added! 💪");
+    } catch { showSnack("Failed to add workout", "error"); }
     setLoading(false);
   };
 
@@ -139,21 +128,28 @@ function Dashboard() {
 
   const addNutrition = async (e) => {
     e.preventDefault(); setLoading(true);
-    try { await API.post("/nutrition", nutritionData); fetchNutrition(); setNutritionData({ mealType: "", foodName: "", calories: "" }); showSnack("Meal logged! 🥗"); }
-    catch { showSnack("Failed to log meal", "error"); }
+    try {
+      await API.post("/nutrition", nutritionData);
+      fetchNutrition();
+      setNutritionData({ mealType: "", foodName: "", calories: "" });
+      showSnack("Meal logged! 🥗");
+    } catch { showSnack("Failed to log meal", "error"); }
     setLoading(false);
   };
 
   const addProgress = async (e) => {
     e.preventDefault(); setLoading(true);
-    try { await API.post("/progress", progressData); fetchProgress(); setProgressData({ weight: "", bodyFat: "" }); showSnack("Progress saved! 📈"); }
-    catch { showSnack("Failed to save progress", "error"); }
+    try {
+      await API.post("/progress", progressData);
+      fetchProgress();
+      setProgressData({ weight: "", bodyFat: "" });
+      showSnack("Progress saved! 📈");
+    } catch { showSnack("Failed to save progress", "error"); }
     setLoading(false);
   };
 
   const totalCalories = nutrition.reduce((s, i) => s + (Number(i.calories) || 0), 0);
-
-  const tabIcon = (icon) => ({ fontSize: "15px !important" });
+  const tabIcon = () => ({ fontSize: "15px !important" });
 
   return (
     <Box sx={{
@@ -170,9 +166,7 @@ function Dashboard() {
             fontWeight: 800,
             background: "linear-gradient(90deg, #7c6af7, #f7567c)",
             WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-          }}>
-            My Dashboard
-          </Typography>
+          }}>My Dashboard</Typography>
           <Typography variant="body2" sx={{ opacity: 0.5, mt: 0.5 }}>
             Track workouts, nutrition & progress in one place.
           </Typography>
@@ -195,8 +189,7 @@ function Dashboard() {
         </Box>
 
         {/* Tabs */}
-        <Tabs
-          value={tab} onChange={(_, v) => setTab(v)}
+        <Tabs value={tab} onChange={(_, v) => setTab(v)}
           TabIndicatorProps={{ style: { display: "none" } }}
           sx={{
             mb: 3, minHeight: 40,
@@ -205,10 +198,7 @@ function Dashboard() {
               fontSize: "0.85rem", borderRadius: "10px", px: 2,
               color: alpha(theme.palette.text.primary, 0.5),
             },
-            "& .Mui-selected": {
-              color: "#fff !important",
-              background: "linear-gradient(135deg, #7c6af7, #f7567c)",
-            },
+            "& .Mui-selected": { color: "#fff !important", background: "linear-gradient(135deg, #7c6af7, #f7567c)" },
           }}
         >
           <Tab icon={<FitnessCenterIcon sx={tabIcon()} />} iconPosition="start" label="Workouts" />
@@ -216,7 +206,7 @@ function Dashboard() {
           <Tab icon={<TrendingUpIcon sx={tabIcon()} />} iconPosition="start" label="Progress" />
         </Tabs>
 
-        {/* ── TAB 0: WORKOUTS ── */}
+        {/* TAB 0: WORKOUTS */}
         {tab === 0 && (
           <Grid container spacing={3}>
             <Grid item xs={12} md={4}>
@@ -239,6 +229,16 @@ function Dashboard() {
                     <TextField fullWidth margin="normal" label="Weight (kg)" type="number" value={formData.weight} sx={fieldSx}
                       InputProps={{ endAdornment: <InputAdornment position="end"><ScaleIcon fontSize="small" sx={{ opacity: 0.4 }} /></InputAdornment> }}
                       onChange={(e) => setFormData({ ...formData, weight: e.target.value })} />
+                    <FormControl fullWidth margin="normal" sx={fieldSx}>
+                      <InputLabel sx={{ "&.Mui-focused": { color: "#7c6af7" } }}>Category</InputLabel>
+                      <Select value={formData.category} label="Category"
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        sx={{ borderRadius: "10px" }}>
+                        {CATEGORIES.map((cat) => (
+                          <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
                     <SubmitBtn label="Add Workout 💪" loading={loading} />
                   </Box>
                 </CardContent>
@@ -258,14 +258,22 @@ function Dashboard() {
                       "&:last-child": { borderBottom: "none" },
                     }}>
                       <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{w.exerciseName}</Typography>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.3 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{w.exerciseName}</Typography>
+                          {w.category && (
+                            <Chip label={w.category} size="small" sx={{
+                              height: 18, fontSize: "0.65rem", fontWeight: 600,
+                              bgcolor: alpha("#7c6af7", 0.1), color: "#7c6af7",
+                            }} />
+                          )}
+                        </Box>
                         <Typography variant="caption" sx={{ opacity: 0.55 }}>
                           {w.sets} sets · {w.reps} reps · {w.weight} kg
                         </Typography>
                       </Box>
                       <IconButton size="small" onClick={() => deleteWorkout(w._id)}
                         sx={{ color: "#f7567c", "&:hover": { bgcolor: alpha("#f7567c", 0.1) } }}>
-                        <DeleteOutlineIcon fontSize="small" />
+                        <DeleteOutlinedIcon fontSize="small" />
                       </IconButton>
                     </Box>
                   ))}
@@ -275,7 +283,7 @@ function Dashboard() {
           </Grid>
         )}
 
-        {/* ── TAB 1: NUTRITION ── */}
+        {/* TAB 1: NUTRITION */}
         {tab === 1 && (
           <Grid container spacing={3}>
             <Grid item xs={12} md={5}>
@@ -326,7 +334,7 @@ function Dashboard() {
           </Grid>
         )}
 
-        {/* ── TAB 2: PROGRESS ── */}
+        {/* TAB 2: PROGRESS */}
         {tab === 2 && (
           <Grid container spacing={3}>
             <Grid item xs={12} md={4}>

@@ -6,13 +6,11 @@ import Navbar from "./components/Navbar";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ProfileModal from "./components/ProfileModal";
 
-// Decode JWT token without any library
 function parseToken(token) {
   try {
-    const payload = token.split(".")[1];
-    const decoded = JSON.parse(atob(payload));
-    return decoded;
+    return JSON.parse(atob(token.split(".")[1]));
   } catch {
     return null;
   }
@@ -21,23 +19,19 @@ function parseToken(token) {
 function App() {
   const [mode, setMode] = useState("dark");
   const [user, setUser] = useState(null);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const theme = useMemo(() => getTheme(mode), [mode]);
 
   const toggleTheme = () =>
     setMode((prev) => (prev === "dark" ? "light" : "dark"));
 
-  // Read user from token whenever app loads
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
       const decoded = parseToken(token);
       if (decoded) {
-        setUser({
-          name: decoded.name || decoded.username || "User",
-          email: decoded.email || "",
-          avatar: null,
-        });
+        setUser({ name: decoded.name, email: decoded.email, avatar: null });
       }
     }
   }, []);
@@ -50,12 +44,18 @@ function App() {
           onToggleTheme={toggleTheme}
           isDarkMode={mode === "dark"}
           user={user}
+          onOpenProfile={() => setProfileOpen(true)}
         />
         <Routes>
           <Route path="/" element={<Login onLogin={setUser} />} />
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Dashboard />} />
         </Routes>
+        <ProfileModal
+          open={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          user={user}
+        />
       </BrowserRouter>
     </ThemeProvider>
   );
